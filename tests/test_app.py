@@ -186,6 +186,23 @@ class TestVibeDrop(unittest.TestCase):
         self.assertIn('YouTube não forneceu ao servidor', youtube_message)
         self.assertIn('outro vídeo público autorizado', youtube_message)
 
+    def test_preview_extractor_failure_is_logged_and_specific(self):
+        class FailingDL:
+            def __init__(self, options): self.options = options
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def extract_info(self, url, download):
+                raise RuntimeError('ERROR: [youtube] Failed to extract any player response')
+
+        with patch.object(website.yt_dlp, 'YoutubeDL', FailingDL):
+            with self.assertLogs(website.app.logger, level='WARNING') as captured:
+                response = self.client.post('/api/preview', json={
+                    'url': 'https://youtu.be/dQw4w9WgXcQ'
+                })
+        self.assertEqual(response.status_code, 422)
+        self.assertIn('YouTube não forneceu ao servidor', response.json['error'])
+        self.assertIn('Prévia não concluída na plataforma YouTube', '\\n'.join(captured.output))
+
     def test_password_protection(self):
         website.ACCESS_CODE = 'senha-teste'
         self.assertEqual(self.client.get('/').status_code, 302)

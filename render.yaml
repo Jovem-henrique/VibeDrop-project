@@ -27,3 +27,6 @@ services:
         value: '20'
       - key: RESULT_TTL_MINUTES
         value: '10'
+      # TEMPORÁRIO: logs detalhados para diagnosticar falhas do extrator; desligar após o teste.
+      - key: YTDLP_VERBOSE
+        value: '1'

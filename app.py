@@ -6,6 +6,7 @@ O aplicativo não contorna DRM, login, conteúdo privado nem restrições de pla
 from __future__ import annotations
 
 import hmac
+import logging
 import importlib.metadata
 import os
 import re
@@ -23,6 +24,7 @@ import yt_dlp
 from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
 app.config.update(
     SECRET_KEY=os.getenv('FLASK_SECRET_KEY') or secrets.token_hex(32),
     SESSION_COOKIE_HTTPONLY=True,
@@ -31,10 +33,11 @@ app.config.update(
     MAX_CONTENT_LENGTH=4096,
 )
 ACCESS_CODE = os.getenv('APP_ACCESS_CODE', '').strip()
+YTDLP_VERBOSE = os.getenv('YTDLP_VERBOSE', '0').lower() in ('1', 'true', 'yes', 'on')
 if os.getenv('PUBLIC_HTTPS') == '1' and not ACCESS_CODE:
     raise RuntimeError('Defina APP_ACCESS_CODE antes de expor o VibeDrop na internet.')
 
-app.logger.info('VibeDrop iniciado; yt-dlp=%s', importlib.metadata.version('yt-dlp'))
+app.logger.info('VibeDrop iniciado; yt-dlp=%s; YTDLP_VERBOSE=%s', importlib.metadata.version('yt-dlp'), YTDLP_VERBOSE)
 
 VIDEO_ID = re.compile(r'^[a-zA-Z0-9_-]{11}$')
 IG_ID = re.compile(r'^[a-zA-Z0-9_-]{5,40}$')
@@ -209,8 +212,9 @@ def media_options(job: Job, progress) -> dict:
         'outtmpl': str(job.folder / 'media.%(ext)s'),
         'noplaylist': True,
         'ignoreerrors': False,
-        'quiet': True,
-        'no_warnings': True,
+        'quiet': not YTDLP_VERBOSE,
+        'no_warnings': not YTDLP_VERBOSE,
+        'verbose': YTDLP_VERBOSE,
         'socket_timeout': 20,
         'retries': 2,
         'fragment_retries': 2,
@@ -398,7 +402,8 @@ def preview():
             return jsonify({'error': 'Muitas prévias solicitadas. Tente mais tarde.'}), 429
         previews.append(now)
     try:
-        with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True, 'noplaylist': True,
+        with yt_dlp.YoutubeDL({'quiet': not YTDLP_VERBOSE, 'no_warnings': not YTDLP_VERBOSE,
+                                'verbose': YTDLP_VERBOSE, 'noplaylist': True,
                                 'skip_download': True, 'socket_timeout': 15,
                                 'retries': 1, 'extract_flat': False}) as ydl:
             info = ydl.extract_info(target, download=False)
@@ -411,8 +416,26 @@ def preview():
             # Exibimos apenas miniaturas hospedadas em HTTPS.
             'thumbnail': safe_thumbnail(info.get('thumbnail')),
         })
-    except Exception:
-        return jsonify({'error': 'Não conseguimos carregar a prévia; tente o download diretamente.'}), 422
+    except Exception as exc:
+        app.logger.warning(
+            'Prévia não concluída na plataforma %s: %s',
+            platform, exc, exc_info=YTDLP_VERBOSE
+        )
+        error_text = str(exc).lower()
+        if (
+            platform.lower() == 'youtube'
+            and ('failed to extract any player response' in error_text
+                 or 'unable to extract initial player response' in error_text)
+        ):
+            message = friendly_download_error(platform, exc)
+        elif (
+            platform.lower() == 'instagram'
+            and any(term in error_text for term in ('rate-limit', 'rate limit', 'login page', 'accessing posts anonymously'))
+        ):
+            message = friendly_download_error(platform, exc)
+        else:
+            message = 'Não conseguimos carregar a prévia. Consulte a disponibilidade do link e tente novamente mais tarde.'
+        return jsonify({'error': message}), 422
 
 
 @app.post('/api/jobs')
