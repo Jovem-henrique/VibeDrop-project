@@ -1,3 +1,11 @@
+# VibeDrop 2.1 — Render Free (21/10/2026)
+
+- Teto de 370 MB por arquivo, sem limite fixo de duração.
+- Removida a cota compartilhada de 10 conversões/hora.
+- Uma conversão ativa por vez e pausa individual de 60 segundos após conclusão.
+- Os resultados ficam vinculados à sessão original.
+- Mantidas senha, limites de prévia, proteção de espaço e URL.
+
 # Histórico de versões
 
 ## VibeDrop 2.0 — protótipo local

@@ -22,7 +22,7 @@ No Chrome Android, abra a URL HTTPS do VibeDrop, abra o menu e toque em **Instal
 
 ## Limites e transparência
 
-- Configuração inicial: 100 MB por mídia, uma conversão por vez, 10 pedidos por hora. Essas restrições são de recursos, e não um limite arbitrário na duração.
+- Configuração 2.1: até 370 MB por arquivo, uma conversão por vez, sem cota global de 10 solicitações/hora; pausa individual de 60 segundos depois de cada trabalho. Essas restrições são de recursos, e não um limite arbitrário na duração.
 - Instâncias grátis podem hibernar, reiniciar e apagar arquivos locais temporários; links para arquivos só funcionam enquanto a instância e a tarefa existirem.
 - CPU 0,1 e 512 MB RAM podem ser insuficientes para conversões de vídeo mais longas. A Render limita tráfego e horas grátis. Não é serviço de hospedagem garantidamente 24x7.
 - Alguns provedores restringem a extração em IPs de datacenter; nem todo vídeo autorizado estará disponível.

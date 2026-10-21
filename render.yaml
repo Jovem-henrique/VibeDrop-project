@@ -18,11 +18,11 @@ services:
       - key: MIN_FREE_GB
         value: '0.1'
       - key: MAX_FILE_MB
-        value: '100'
+        value: '370'
       - key: MAX_SIMULTANEOUS
         value: '1'
-      - key: HOURLY_LIMIT
-        value: '10'
+      - key: CLIENT_COOLDOWN_SECONDS
+        value: '60'
       - key: PREVIEW_HOURLY_LIMIT
         value: '20'
       - key: RESULT_TTL_MINUTES

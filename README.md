@@ -2,7 +2,7 @@
 
 > Um projeto de portfólio em Python: uma interface web para obter cópias de **conteúdos públicos ou autorizados** em MP3, M4A e MP4, a partir de links individuais do YouTube, Instagram e TikTok.
 
-**Status:** VibeDrop 2.0 — candidato à publicação na Railway; acompanhe [PUBLICAR_RAILWAY.md](PUBLICAR_RAILWAY.md). A extração varia conforme plataforma, disponibilidade, direitos de uso e mudanças externas. A presença de uma plataforma na interface **não garante** que todo link funcionará.
+**Status:** VibeDrop 2.1 — Render Free; acompanhe [PUBLICAR_RAILWAY.md](PUBLICAR_RAILWAY.md). A extração varia conforme plataforma, disponibilidade, direitos de uso e mudanças externas. A presença de uma plataforma na interface **não garante** que todo link funcionará.
 
 ## ✨ Funcionalidades
 
@@ -12,7 +12,7 @@
 - Links de vídeos individuais públicos do **YouTube, Instagram (Reels/publicações) e TikTok**; sem playlists, perfis ou vídeos privados.
 - Prévia opcional de título, duração e miniatura; pode falhar sem impedir tentativa de download.
 - Progresso assíncrono e download temporário com expiração em 30 minutos.
-- **Sem limite fixo de duração ou de tamanho de arquivo** por padrão, mas com proteção de espaço em disco e capacidade limitada do servidor.
+- **Sem limite fixo de duração**; na Render Free, teto configurado de **370 MB por arquivo**, sujeito aos recursos do servidor.
 - Acesso por senha opcional local e obrigatório na configuração HTTPS pública.
 
 ## 🐧 Rodando no Fedora 44
@@ -79,7 +79,7 @@ Os dois terminais precisam ficar abertos, e o computador ligado. Ao terminar, `C
 
 - Não há restrição arbitrária de **duração**. Downloads muito longos continuam sujeitos à conexão, acesso e tempo de processamento.
 - `MAX_FILE_MB=0` elimina o teto de tamanho por arquivo. `MIN_FREE_GB=2` interrompe downloads se houver pouco espaço disponível; não garante ausência de esgotamento de disco durante conversão pelo FFmpeg.
-- Até **2 trabalhos simultâneos** e **24 solicitações por hora** no processo; são proteções, não limites do arquivo do usuário.
+- Na Render Free, **1 trabalho simultâneo**. A cota global de 10 conversões/hora foi removida e cada sessão aguarda 60 segundos após concluir uma conversão.
 - Prévia limitada a 30 pedidos por hora para evitar consultas externas excessivas.
 - Arquivos gerados expiram 30 minutos depois de prontos. Não há armazenamento permanente ou retomada após reiniciar o servidor.
 - Use somente **um worker Gunicorn**: a fila atual existe na memória de um processo.
@@ -132,9 +132,18 @@ As instruções para hospedar na Railway, configurar segredos, limites reais e p
 - Use a opção **New > Blueprint** no painel Render, escolha este repositório e o arquivo `render.yaml`.
 - O Blueprint seleciona `free` (0,1 vCPU / 512 MB de RAM) e solicita `APP_ACCESS_CODE` **no painel**, sem publicar senha no GitHub.
 - O site será HTTPS num endereço `.onrender.com` e poderá ser instalado na tela inicial como PWA nos navegadores compatíveis. **Não funciona offline:** a conversão depende do servidor.
-- Esta configuração gratuita impõe 100 MB por arquivo, 1 conversão simultânea, 10 solicitações/hora e 10 minutos de retenção para evitar esgotar recursos. Não há limite fixo de duração; mas vídeos longos excederão facilmente o tamanho/recursos disponíveis.
+- A Render Free aceita pedidos de até 370 MB por arquivo, com 1 conversão simultânea, pausa individual de 60 segundos após processamento e retenção de 10 minutos. Não há limite fixo de duração; mas vídeos longos excederão facilmente o tamanho/recursos disponíveis.
 - A Render suspende a instância após 15 minutos sem requisições; o próximo acesso pode esperar ~1 minuto. Arquivos temporários podem desaparecer ao suspender ou reiniciar.
 - Se vídeos de boa resolução falharem, não aumente as cotas cegamente: monitore os logs. Limitações de plataforma, CPU, RAM, espaço e tráfego continuam existindo.
 - Uso apenas de conteúdo próprio, público com permissão ou autorizado; não contorne paywalls, DRM ou sessões privadas.
 
 Guia passo a passo em **PUBLICAR_RENDER.md**.
+
+## VibeDrop 2.1 — controle de uso justo
+
+- A tela de senha **continua ativa**. Não compartilhe o código em arquivos públicos.
+- Não existe mais um limite **global** de 10 conversões por hora. Cada sessão tem um descanso de 60 segundos após o trabalho, sem contar pedidos por hora.
+- Arquivos e estado de conversões são acessíveis apenas pela sessão que solicitou a mídia.
+- A Render Free não garante que um vídeo de 370 MB caiba no armazenamento temporário: FFmpeg pode exigir múltiplos arquivos intermediários.
+- O workspace Hobby da Render inclui 5 GB/mês de saída, compartilhados com outros serviços do workspace. O VibeDrop não mede o total mensal; consulte Billing e Metrics da Render.
+- Os controles por sessão estão na memória e podem se perder com reinícios; a identificação de sessão pode ser reiniciada ao limpar cookies. Não são uma proteção suficiente para um site anônimo de grande escala.
