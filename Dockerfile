@@ -11,10 +11,8 @@ ENV PATH="/opt/deno/bin:${PATH}"
 
 WORKDIR /app
 COPY requirements.txt .
-# Buildar a imagem a partir deste arquivo garante que a versão nightly atual do yt-dlp seja instalada.
-# O canal nightly acompanha correções quando as plataformas mudam os extratores.
+# Mantém a versão estável fixada em requirements.txt para reproduzir o comportamento anterior.
 RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir --pre --upgrade "yt-dlp[default]" \
     && python -c "import importlib.metadata; print('VibeDrop yt-dlp:', importlib.metadata.version('yt-dlp'))"
 COPY . .
 
