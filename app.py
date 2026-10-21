@@ -6,6 +6,7 @@ O aplicativo não contorna DRM, login, conteúdo privado nem restrições de pla
 from __future__ import annotations
 
 import hmac
+import importlib.metadata
 import os
 import re
 import secrets
@@ -32,6 +33,8 @@ app.config.update(
 ACCESS_CODE = os.getenv('APP_ACCESS_CODE', '').strip()
 if os.getenv('PUBLIC_HTTPS') == '1' and not ACCESS_CODE:
     raise RuntimeError('Defina APP_ACCESS_CODE antes de expor o VibeDrop na internet.')
+
+app.logger.info('VibeDrop iniciado; yt-dlp=%s', importlib.metadata.version('yt-dlp'))
 
 VIDEO_ID = re.compile(r'^[a-zA-Z0-9_-]{11}$')
 IG_ID = re.compile(r'^[a-zA-Z0-9_-]{5,40}$')
@@ -242,6 +245,47 @@ def media_options(job: Job, progress) -> dict:
     return options
 
 
+def friendly_download_error(platform: str, error: Exception | str) -> str:
+    """Converte erros técnicos conhecidos em mensagens úteis sem expor detalhes internos."""
+    error_text = str(error).lower()
+    platform_name = platform.lower()
+
+    if (
+        'espaço insuficiente' in error_text
+        or 'no space left' in error_text
+        or 'disk quota exceeded' in error_text
+    ):
+        return 'Espaço insuficiente no servidor para processar esta mídia. Tente novamente mais tarde.'
+    if 'limite de tamanho' in error_text or 'larger than max-filesize' in error_text:
+        return 'O arquivo ultrapassou o limite de 370 MB configurado para este serviço.'
+    if 'ffmpeg' in error_text or 'ffprobe' in error_text:
+        return 'A ferramenta de conversão de mídia falhou no servidor. Tente novamente mais tarde.'
+    if platform_name == 'instagram' and any(
+        term in error_text for term in ('rate-limit', 'rate limit', 'login page', 'accessing posts anonymously')
+    ):
+        return (
+            'O Instagram limitou o acesso anônimo deste servidor. Isso não é causado pelo limite de tamanho. '
+            'Aguarde e tente novamente mais tarde com outra publicação pública autorizada. '
+            'O VibeDrop não utiliza cookies de contas pessoais para contornar esse bloqueio.'
+        )
+    if platform_name == 'youtube' and any(
+        term in error_text for term in ('failed to extract any player response', 'unable to extract initial player response')
+    ):
+        return (
+            'O YouTube não forneceu ao servidor a resposta necessária para localizar esta mídia. '
+            'A plataforma pode ter mudado ou restringido o acesso do servidor. Tente novamente mais tarde '
+            'ou teste outro vídeo público autorizado.'
+        )
+    if 'rate-limit' in error_text or 'rate limit' in error_text:
+        return f'{platform} limitou temporariamente os acessos deste servidor. Aguarde e tente novamente mais tarde.'
+    if 'sign in' in error_text or 'not a bot' in error_text or '403' in error_text or 'login page' in error_text:
+        return f'{platform} restringiu este acesso. Tente novamente mais tarde ou use outro link público autorizado.'
+    return (
+        'Não foi possível baixar esta mídia. A plataforma pode ter restringido o acesso, '
+        'ou o link/formato pode estar indisponível. Tente outro link público autorizado.'
+    )
+
+
 def download_job(job: Job) -> None:
     def progress(details: dict) -> None:
         if details.get('status') == 'downloading':
@@ -274,17 +318,7 @@ def download_job(job: Job) -> None:
         update_job(job, status='ready', percent=100, message='Pronto para baixar!', filename=filename,
                    file_path=output, ended=time.time())
     except Exception as exc:
-        error_text = str(exc).lower()
-        if 'espaço insuficiente' in error_text or 'no space left' in error_text:
-            msg = 'Espaço insuficiente no servidor para processar esta mídia.'
-        elif 'limite de tamanho' in error_text or 'larger than max-filesize' in error_text:
-            msg = 'O arquivo ultrapassou o teto de tamanho definido pelo administrador.'
-        elif 'ffmpeg' in error_text or 'ffprobe' in error_text:
-            msg = 'FFmpeg não está disponível ou falhou na conversão.'
-        elif 'sign in' in error_text or 'not a bot' in error_text or '403' in error_text:
-            msg = f'{job.platform} restringiu este acesso. Tente uma mídia pública diferente.'
-        else:
-            msg = 'Não foi possível baixar esta mídia. Confira o link, a disponibilidade e as permissões.'
+        msg = friendly_download_error(job.platform, exc)
         app.logger.warning('Trabalho %s não concluído: %s', job.id, exc)
         update_job(job, status='error', percent=0, message=msg, ended=time.time())
         shutil.rmtree(job.folder, ignore_errors=True)
