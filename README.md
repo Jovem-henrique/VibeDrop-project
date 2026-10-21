@@ -6,7 +6,7 @@
 
 ## Runtime publicado — atualização de 21/10/2026
 
-- Python 3.14.8; Flask 3.1.3; Gunicorn 26.2.2.
+- Python 3.14.8; Flask 3.1.3; Gunicorn 26.2.0.
 - yt-dlp fixado ao commit upstream `f59cd0ba0a3c666fa5d8793b073fa9f03cfecc22`, que inclui uma correção recente de extração inicial do YouTube.
 - FFmpeg 9.0.2 (build Linux x86_64) e Deno 2.9.8, com verificações SHA-256 durante o build.
 - O Dockerfile imprime as versões utilizadas para que falhas de extração possam ser investigadas nos logs.

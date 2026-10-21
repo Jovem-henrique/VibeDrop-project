@@ -1,7 +1,7 @@
 # VibeDrop 2.2 — atualização completa do runtime (21/10/2026)
 
 - Python atualizado para 3.14.8 (imagem oficial `python:3.14.8-slim`).
-- Flask fixado em 3.1.3 e Gunicorn em 26.2.2.
+- Flask fixado em 3.1.3 e Gunicorn em 26.2.0.
 - yt-dlp fixado ao commit upstream `f59cd0ba0a3c666fa5d8793b073fa9f03cfecc22`, que inclui a correção de extração inicial do YouTube publicada em 21/10/2026.
 - FFmpeg atualizado para a linha 9.0.2; build Linux x86_64 fixado e verificado por SHA-256.
 - Deno atualizado para 2.9.8; binário oficial fixado e verificado por SHA-256.
