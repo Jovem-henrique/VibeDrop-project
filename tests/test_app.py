@@ -15,7 +15,7 @@ class TestVibeDrop(unittest.TestCase):
         self.tmp_dirs = []
         with website.lock:
             website.jobs.clear()
-            website.submissions.clear()
+            website.client_cooldowns.clear()
             website.previews.clear()
             website.login_attempts.clear()
 
@@ -25,7 +25,7 @@ class TestVibeDrop(unittest.TestCase):
             for job in website.jobs.values():
                 website.shutil.rmtree(job.folder, ignore_errors=True)
             website.jobs.clear()
-            website.submissions.clear()
+            website.client_cooldowns.clear()
             website.previews.clear()
             website.login_attempts.clear()
         for temp in self.tmp_dirs:
@@ -121,6 +121,39 @@ class TestVibeDrop(unittest.TestCase):
             website.download_job(job)
         self.assertEqual(job.status, 'ready')
         self.assertEqual(job.filename, 'Audio autorizado de 6h.mp3')
+
+    def test_no_global_hourly_limit_and_fair_cooldown(self):
+        """Não há cota global; usuários têm pausa individual após o processamento."""
+        payload = {'url': 'https://youtu.be/dQw4w9WgXcQ', 'format': 'm4a'}
+        with patch.object(website.executor, 'submit'):
+            one = self.client.post('/api/jobs', json=payload)
+            self.assertEqual(one.status_code, 202)
+            first = website.jobs[one.json['job_id']]
+            website.update_job(first, status='error', ended=website.time.time())
+            blocked = self.client.post('/api/jobs', json=payload)
+            self.assertEqual(blocked.status_code, 429)
+            self.assertIn('Aguarde', blocked.json['error'])
+            other = website.app.test_client()
+            two = other.post('/api/jobs', json=payload)
+            self.assertEqual(two.status_code, 202)
+            second = website.jobs[two.json['job_id']]
+            self.assertEqual(self.client.get('/api/jobs/' + second.id).status_code, 404)
+            self.assertEqual(self.client.get('/api/jobs/' + second.id + '/download').status_code, 404)
+            website.update_job(second, status='error', ended=website.time.time())
+            with website.lock:
+                website.client_cooldowns.clear()
+            three = self.client.post('/api/jobs', json=payload)
+            self.assertEqual(three.status_code, 202)
+            website.update_job(website.jobs[three.json['job_id']], status='error', ended=website.time.time())
+
+    def test_370mb_limit_without_duration_limit(self):
+        with patch.object(website, 'MAX_FILE_BYTES', 370 * 1024 * 1024):
+            with tempfile.TemporaryDirectory() as folder:
+                job = website.Job('limit', 'https://youtu.be/dQw4w9WgXcQ', 'mp4',
+                                  Path(folder), website.time.time())
+                opts = website.media_options(job, lambda _: None)
+                self.assertEqual(opts['max_filesize'], 370 * 1024 * 1024)
+                self.assertIsNone(opts['match_filter']({'duration': 3 * 3600, 'is_live': False}))
 
     def test_preview_without_real_internet(self):
         class FakeDL:
