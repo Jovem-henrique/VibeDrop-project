@@ -1,4 +1,4 @@
-"""VibeDrop 2.0 — áudio e vídeo para links individuais públicos/autorizados.
+"""VibeDrop 2.1 — áudio e vídeo para links individuais públicos/autorizados.
 
 Flask + yt-dlp + FFmpeg. Use um worker Gunicorn: fila em memória.
 O aplicativo não contorna DRM, login, conteúdo privado nem restrições de plataformas.
@@ -51,13 +51,14 @@ MIN_FREE_BYTES = int(MIN_FREE_GB * 1024 ** 3)
 MAX_FILE_BYTES = MAX_FILE_MB * 1024 ** 2
 MAX_SIMULTANEOUS = max(1, min(2, int(os.getenv('MAX_SIMULTANEOUS', '2'))))
 TTL_SECONDS = max(5, int(os.getenv('RESULT_TTL_MINUTES', '30'))) * 60
-HOURLY_LIMIT = max(1, int(os.getenv('HOURLY_LIMIT', '24')))
+# Limite global de conversões/hora removido; intervalo por sessão após terminar.
+CLIENT_COOLDOWN_SECONDS = max(0, int(os.getenv('CLIENT_COOLDOWN_SECONDS', '60')))
 PREVIEW_HOURLY_LIMIT = max(1, int(os.getenv('PREVIEW_HOURLY_LIMIT', '30')))
 
 executor = ThreadPoolExecutor(max_workers=MAX_SIMULTANEOUS)
 lock = threading.Lock()
 jobs: dict[str, Job] = {}
-submissions: list[float] = []
+client_cooldowns: dict[str, float] = {}
 previews: list[float] = []
 login_attempts: dict[str, list[float]] = {}
 
@@ -77,6 +78,7 @@ class Job:
     filename: str = ''
     file_path: Path | None = None
     ended: float | None = None
+    client_id: str = ''
 
 
 def normalize_media_link(raw_url: str) -> tuple[str, str]:
@@ -170,7 +172,9 @@ def cleanup_expired() -> None:
             if job.ended is not None and now - job.ended > TTL_SECONDS:
                 old_dirs.append(job.folder)
                 jobs.pop(jid, None)
-        submissions[:] = [x for x in submissions if now - x < 3600]
+        for client_id, until in list(client_cooldowns.items()):
+            if until <= now:
+                client_cooldowns.pop(client_id, None)
         previews[:] = [x for x in previews if now - x < 3600]
         for ip, times in list(login_attempts.items()):
             times[:] = [x for x in times if now - x < 60]
@@ -193,6 +197,8 @@ def update_job(job: Job, **changes: object) -> None:
     with lock:
         for key, value in changes.items():
             setattr(job, key, value)
+        if 'ended' in changes and changes['ended'] is not None and job.client_id:
+            client_cooldowns[job.client_id] = float(changes['ended']) + CLIENT_COOLDOWN_SECONDS
 
 
 def media_options(job: Job, progress) -> dict:
@@ -286,9 +292,13 @@ def download_job(job: Job) -> None:
 
 @app.before_request
 def require_access_code():
-    if not ACCESS_CODE or request.endpoint in ('health', 'login', 'static'):
+    if request.endpoint in ('health', 'login', 'static'):
+        return None
+    if not ACCESS_CODE:
+        session.setdefault('client_id', secrets.token_urlsafe(18))
         return None
     if session.get('access_granted') is True:
+        session.setdefault('client_id', secrets.token_urlsafe(18))
         return None
     if request.path.startswith('/api/'):
         return jsonify({'error': 'Sessão expirada. Faça login novamente.'}), 401
@@ -327,6 +337,7 @@ def login():
         if hmac.compare_digest(request.form.get('code', ''), ACCESS_CODE):
             session.clear()
             session['access_granted'] = True
+            session['client_id'] = secrets.token_urlsafe(18)
             return redirect(url_for('index'))
         error = 'Código incorreto. Tente novamente.'
     return render_template('login.html', error=error)
@@ -389,16 +400,19 @@ def submit_job():
         return jsonify({'error': str(exc)}), 400
     cleanup_expired()
     now = time.time()
+    client_id = session['client_id']
     with lock:
+        if any(j.client_id == client_id and j.status in ('queued', 'working') for j in jobs.values()):
+            return jsonify({'error': 'Você já tem uma conversão em andamento.'}), 429
+        wait = client_cooldowns.get(client_id, 0) - now
+        if wait > 0:
+            return jsonify({'error': f'Aguarde {int(wait) + 1} segundos antes de outra conversão.'}), 429
         active = sum(j.status in ('queued', 'working') for j in jobs.values())
         if active >= MAX_SIMULTANEOUS:
             return jsonify({'error': 'O servidor está ocupado. Tente novamente em instantes.'}), 429
-        if len(submissions) >= HOURLY_LIMIT:
-            return jsonify({'error': 'Muitas solicitações por hora. Tente mais tarde.'}), 429
-        submissions.append(now)
         jid = secrets.token_urlsafe(20)
         folder = Path(tempfile.mkdtemp(prefix='vibedrop_'))
-        job = Job(jid, url, fmt, folder, now, quality=quality, platform=platform)
+        job = Job(jid, url, fmt, folder, now, quality=quality, platform=platform, client_id=client_id)
         jobs[jid] = job
     executor.submit(download_job, job)
     return jsonify({'job_id': job.id}), 202
@@ -409,7 +423,7 @@ def job_status(job_id: str):
     cleanup_expired()
     with lock:
         job = jobs.get(job_id)
-        if job is None:
+        if job is None or job.client_id != session['client_id']:
             return jsonify({'error': 'Download não encontrado ou expirado.'}), 404
         return jsonify({
             'status': job.status, 'message': job.message, 'percent': job.percent,
@@ -423,7 +437,7 @@ def download_result(job_id: str):
     cleanup_expired()
     with lock:
         job = jobs.get(job_id)
-        if job is None or job.status != 'ready' or not job.file_path:
+        if job is None or job.client_id != session['client_id'] or job.status != 'ready' or not job.file_path:
             return jsonify({'error': 'Arquivo indisponível ou expirado.'}), 404
         path, name = job.file_path, job.filename
     if not path.is_file():
