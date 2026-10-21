@@ -1,4 +1,5 @@
-# Render Free para demonstracao, nao para downloads massivos.
+# Render Blueprint: instancia gratuita para uso leve entre amigos.
+# A senha nunca vai para o GitHub, sera solicitada pela Render no cadastro.
 services:
   - type: web
     name: vibedrop-project

@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}"><meta name="theme-color" content="#0c0d12"><title>Entrar • VibeDrop</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body><div class="ambient ambient-a" aria-hidden="true"></div><div class="ambient ambient-b" aria-hidden="true"></div>
+<header class="topbar shell"><a class="brand" href="/" aria-label="VibeDrop — início"><span class="brand-icon">♫</span><span>vibe<span class="brand-accent">drop</span></span></a></header>
+<main class="shell login-wrapper"><section class="main-card login-card"><div class="card-header"><div class="disc"><span class="disc-center"></span><span class="disc-note">♪</span></div><div><div class="card-kicker">ACESSO COMPARTILHADO</div><h2>Bem-vindo ao VibeDrop</h2></div></div>
+<div class="card-body"><p class="login-text">Insira o código compartilhado pelo criador do site para continuar.</p><form method="post" action="{{ url_for('login') }}"><label for="code" class="field-label">Código de acesso</label><div class="input-wrap"><input type="password" name="code" id="code" placeholder="Digite o código" required autofocus autocomplete="current-password"></div><button class="main-btn" type="submit">Entrar <span aria-hidden="true">→</span></button></form>{% if error %}<div class="error-box login-error" role="alert">{{ error }}</div>{% endif %}</div></section></main></body></html>

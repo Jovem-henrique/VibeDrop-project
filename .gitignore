@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.env
+.env.*
+!.env.example
+*.pyc
+
+# Saidas temporarias de testes e midias baixadas
+*.mp3
+*.m4a
+*.mp4
+*.part
+*.ytdl
+.DS_Store
+.pytest_cache/
