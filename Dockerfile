@@ -11,7 +11,9 @@ ENV PATH="/opt/deno/bin:${PATH}"
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# O canal nightly é recomendado pelo projeto yt-dlp quando plataformas mudam os extratores.\nRUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir --pre --upgrade "yt-dlp[default]" \
+    && python -c "import importlib.metadata; print('VibeDrop yt-dlp:', importlib.metadata.version('yt-dlp'))"
 COPY . .
 
 ENV PORT=10000
