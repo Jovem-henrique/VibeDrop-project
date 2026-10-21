@@ -1,4 +1,4 @@
-"""VibeDrop 2.1 — áudio e vídeo para links individuais públicos/autorizados.
+"""VibeDrop 2.2 — áudio e vídeo para links individuais públicos/autorizados.
 
 Flask + yt-dlp + FFmpeg. Use um worker Gunicorn: fila em memória.
 O aplicativo não contorna DRM, login, conteúdo privado nem restrições de plataformas.
@@ -6,8 +6,9 @@ O aplicativo não contorna DRM, login, conteúdo privado nem restrições de pla
 from __future__ import annotations
 
 import hmac
-import logging
 import importlib.metadata
+import logging
+import platform
 import os
 import re
 import secrets
@@ -37,7 +38,13 @@ YTDLP_VERBOSE = os.getenv('YTDLP_VERBOSE', '0').lower() in ('1', 'true', 'yes', 
 if os.getenv('PUBLIC_HTTPS') == '1' and not ACCESS_CODE:
     raise RuntimeError('Defina APP_ACCESS_CODE antes de expor o VibeDrop na internet.')
 
-app.logger.info('VibeDrop iniciado; yt-dlp=%s; YTDLP_VERBOSE=%s', importlib.metadata.version('yt-dlp'), YTDLP_VERBOSE)
+app.logger.info(
+    'VibeDrop 2.2 iniciado; Python=%s; yt-dlp=%s; fonte=%s; YTDLP_VERBOSE=%s',
+    platform.python_version(),
+    importlib.metadata.version('yt-dlp'),
+    os.getenv('YTDLP_SOURCE_COMMIT', 'unknown'),
+    YTDLP_VERBOSE,
+)
 
 VIDEO_ID = re.compile(r'^[a-zA-Z0-9_-]{11}$')
 IG_ID = re.compile(r'^[a-zA-Z0-9_-]{5,40}$')

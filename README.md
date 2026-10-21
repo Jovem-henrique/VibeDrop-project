@@ -1,8 +1,17 @@
-# 🎵 VibeDrop 2.0
+# 🎵 VibeDrop 2.2
 
 > Um projeto de portfólio em Python: uma interface web para obter cópias de **conteúdos públicos ou autorizados** em MP3, M4A e MP4, a partir de links individuais do YouTube, Instagram e TikTok.
 
-**Status:** VibeDrop 2.1 — Render Free; acompanhe [PUBLICAR_RAILWAY.md](PUBLICAR_RAILWAY.md). A extração varia conforme plataforma, disponibilidade, direitos de uso e mudanças externas. A presença de uma plataforma na interface **não garante** que todo link funcionará.
+**Status:** VibeDrop 2.2 — Render Free; acompanhe [PUBLICAR_RAILWAY.md](PUBLICAR_RAILWAY.md). A extração varia conforme plataforma, disponibilidade, direitos de uso e mudanças externas. A presença de uma plataforma na interface **não garante** que todo link funcionará.
+
+## Runtime publicado — atualização de 21/10/2026
+
+- Python 3.14.8; Flask 3.1.3; Gunicorn 26.2.2.
+- yt-dlp fixado ao commit upstream `f59cd0ba0a3c666fa5d8793b073fa9f03cfecc22`, que inclui uma correção recente de extração inicial do YouTube.
+- FFmpeg 9.0.2 (build Linux x86_64) e Deno 2.9.8, com verificações SHA-256 durante o build.
+- O Dockerfile imprime as versões utilizadas para que falhas de extração possam ser investigadas nos logs.
+- Os testes automáticos simulam serviços externos; eles não garantem que o YouTube, Instagram ou TikTok permitam downloads reais a partir do IP da Render.
+
 
 ## ✨ Funcionalidades
 
@@ -139,7 +148,7 @@ As instruções para hospedar na Railway, configurar segredos, limites reais e p
 
 Guia passo a passo em **PUBLICAR_RENDER.md**.
 
-## VibeDrop 2.1 — controle de uso justo
+## VibeDrop 2.2 — runtime atualizado e controle de uso justo
 
 - A tela de senha **continua ativa**. Não compartilhe o código em arquivos públicos.
 - Não existe mais um limite **global** de 10 conversões por hora. Cada sessão tem um descanso de 60 segundos após o trabalho, sem contar pedidos por hora.
