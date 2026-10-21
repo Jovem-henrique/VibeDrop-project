@@ -1,5 +1,10 @@
 # VibeDrop 2.1 — Render Free (21/10/2026)
 
+- Correção operacional: a imagem Docker instala a versão nightly do yt-dlp, recomendada pelo projeto quando mudanças nas plataformas quebram o extrator estável.
+- Os logs de inicialização registram a versão do yt-dlp usada pelo serviço.
+- Mensagens específicas para limite de acesso anônimo do Instagram e falha de extração do player do YouTube.
+- Testes offline para as mensagens de erro das duas plataformas.
+
 - Teto de 370 MB por arquivo, sem limite fixo de duração.
 - Removida a cota compartilhada de 10 conversões/hora.
 - Uma conversão ativa por vez e pausa individual de 60 segundos após conclusão.
