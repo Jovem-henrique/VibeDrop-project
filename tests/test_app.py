@@ -172,6 +172,20 @@ class TestVibeDrop(unittest.TestCase):
         self.assertEqual(result.json['thumbnail'], 'https://i.ytimg.com/test.jpg')
         self.assertIsNone(website.safe_thumbnail('https://127.0.0.1/secret'))
 
+    def test_platform_specific_download_errors(self):
+        instagram_error = (
+            'ERROR: [Instagram] The webpage request was redirected to the login page. '
+            'You have exceeded the rate-limit for accessing posts anonymously.'
+        )
+        instagram_message = website.friendly_download_error('Instagram', instagram_error)
+        self.assertIn('Instagram limitou o acesso anônimo', instagram_message)
+        self.assertIn('não utiliza cookies de contas pessoais', instagram_message)
+
+        youtube_error = 'ERROR: [youtube] id: Failed to extract any player response'
+        youtube_message = website.friendly_download_error('YouTube', youtube_error)
+        self.assertIn('YouTube não forneceu ao servidor', youtube_message)
+        self.assertIn('outro vídeo público autorizado', youtube_message)
+
     def test_password_protection(self):
         website.ACCESS_CODE = 'senha-teste'
         self.assertEqual(self.client.get('/').status_code, 302)
